@@ -1,0 +1,115 @@
+version: '3.8'
+
+services:
+  filebeat:
+    image: elastic/filebeat:8.12.0
+    user: root
+    volumes:
+      - ./internal/config/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - elk-net
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    command: [ "--strict.perms=false" ]
+
+  elasticsearch:
+    image: elasticsearch:8.12.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - elk-net
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -qE '\"status\":\"(green|yellow)\"'"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  logstash:
+    image: logstash:8.12.0
+    volumes:
+      - ./internal/config/logstash/pipeline:/usr/share/logstash/pipeline
+      - ./internal/config/logstash/config:/usr/share/logstash/config
+    ports:
+      - "5000:5000/udp"
+    environment:
+      LS_JAVA_OPTS: "-Xmx256m -Xms256m"
+    networks:
+      - elk-net
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+  kibana:
+    image: kibana:8.12.0
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    networks:
+      - elk-net
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: myapp
+      POSTGRES_USER: myapp
+      POSTGRES_PASSWORD: db_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - elk-net
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U myapp" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    ports:
+      - "8080:80"
+    environment:
+      - ELASTICSEARCH_URL=http://elasticsearch:9200
+      - LOGSTASH_HOST=logstash
+    networks:
+      - elk-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+      logstash:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/app/api", "healthcheck"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: gelf
+      options:
+        gelf-address: "udp://logstash:5000"
+        tag: "app"
+    labels:
+      co.elastic.logs/enabled: "true"
+      co.elastic.logs/processors.add_fields.fields.service: "booking-system"
+
+networks:
+  elk-net:
+    driver: bridge
+
+volumes:
+  elasticsearch_data:
+  postgres_data:
