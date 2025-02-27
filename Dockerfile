@@ -1,43 +1,37 @@
 # Build stage
 FROM golang:1.22.4-alpine AS builder
-
 WORKDIR /app
 
-RUN apk add --no-cache git ca-certificates
-
+# Копируем зависимости и скачиваем их
 COPY go.mod go.sum ./
-RUN go mod download -x && go mod verify
+RUN go mod download
 
+# Копируем весь проект
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
-    go build \
-    -ldflags="-s -w -X main.Version=$(git describe --tags --always)" \
-    -trimpath \
-    -o /app/bin/api ./cmd/api
+# Собираем только API
+RUN CGO_ENABLED=0 GOOS=linux go build -o /app/bin/api ./cmd/api
+
+# Устанавливаем migrate на этапе сборки
+RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 
 # Final stage
-FROM gcr.io/distroless/static-debian12:nonroot
-
-LABEL maintainer="kurabtsevnikita@gmail.com"
-LABEL org.opencontainers.image.source="https://github.com/NikitaKurabtsev/booking-system"
-
-# Environment variables
-ENV ELASTICSEARCH_URL=http://elasticsearch:9200 \
-    LOGSTASH_HOST=logstash:5000 \
-    LOG_LEVEL=info
-
-# Copy artifacts
+FROM alpine:latest
 WORKDIR /app
-USER nonroot:nonroot
-COPY --from=builder --chown=nonroot:nonroot /app/bin/api /app/api
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
-# Network configuration
-EXPOSE 80/tcp
+# Копируем бинарник и зависимости
+COPY --from=builder /app/bin/api .
+COPY --from=builder /app/schema ./schema
+COPY --from=builder /app/internal/config ./config
 
-# Healthcheck
-HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD ["/app/api", "healthcheck"]
+# Устанавливаем зависимости для здоровья
+RUN apk add --no-cache postgresql-client curl
 
-ENTRYPOINT ["/app/api"]
+# Копируем migrate
+COPY --from=builder /go/bin/migrate /usr/local/bin/migrate
+
+# Порт для API
+EXPOSE 8080
+
+# Команда запуска
+CMD ["./api"]
