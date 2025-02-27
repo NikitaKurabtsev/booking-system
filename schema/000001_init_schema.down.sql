@@ -1,0 +1,7 @@
+DROP TABLE IF EXISTS bookings;
+DROP TABLE IF EXISTS resources;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS schema_migrations;
+DROP SEQUENCE IF EXISTS users_id_seq;
+DROP SEQUENCE IF EXISTS resources_id_seq;
+DROP SEQUENCE IF EXISTS bookings_id_seq;
