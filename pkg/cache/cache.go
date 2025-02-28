@@ -9,7 +9,6 @@ import (
 
 type Cache struct {
 	client *redis.Client
-	ttl    time.Duration
 	ctx    context.Context
 }
 
@@ -24,8 +23,8 @@ func NewCache(addr string) *Cache {
 	}
 }
 
-func (c *Cache) Set(key string, value interface{}) error {
-	return c.client.Set(c.ctx, key, value, c.ttl).Err()
+func (c *Cache) Set(key string, value interface{}, ttl time.Duration) error {
+	return c.client.Set(c.ctx, key, value, ttl).Err()
 }
 
 func (c *Cache) Get(key string) (string, error) {
