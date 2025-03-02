@@ -19,13 +19,13 @@ type CreateResourceInput struct {
 	Status string `json:"status" binding:"required,oneof=available booked"`
 }
 
-type UpdatedResourceInput struct {
+type UpdateResourceInput struct {
 	Name   *string `json:"name"`
 	Type   *string `json:"type"`
 	Status *string `json:"status"`
 }
 
-func (r *UpdatedResourceInput) Validate() error {
+func (r *UpdateResourceInput) Validate() error {
 	if r.Name == nil && r.Type == nil && r.Status == nil {
 		return errors.New("empty update data")
 	}
