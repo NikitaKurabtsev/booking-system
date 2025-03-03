@@ -7,8 +7,8 @@ import (
 )
 
 const (
-	UserTable      = "users"
-	BookingTable   = "booking"
+	UsersTable     = "users"
+	BookingsTable  = "bookings"
 	ResourcesTable = "resources"
 )
 
