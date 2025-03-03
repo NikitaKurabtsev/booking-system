@@ -12,12 +12,6 @@ import (
 	"github.com/spf13/viper"
 )
 
-func hello() {
-}
-asdfadfad
-
-
-
 func main() {
 	loggerHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 		Level: slog.LevelInfo,
@@ -52,7 +46,7 @@ func main() {
 
 	fmt.Println(respository)
 
-	// TODO: create sql migrations with the db tables
+	// serivce should recive logger, cache and others...
 
 	// repository := NewRepository(database)
 	//
