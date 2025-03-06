@@ -4,21 +4,22 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/NikitaKurabtsev/booking-system/internal/models"
 	"github.com/NikitaKurabtsev/booking-system/pkg/db"
 	"github.com/jmoiron/sqlx"
 )
 
-type ResourcesPostgres struct {
+type ResourcePostgres struct {
 	db *sqlx.DB
 }
 
-func NewResourcePostgres(db *sqlx.DB) *ResourcesPostgres {
-	return &ResourcesPostgres{db: db}
+func NewResourcePostgres(db *sqlx.DB) *ResourcePostgres {
+	return &ResourcePostgres{db: db}
 }
 
-func (r *ResourcesPostgres) Create(input models.CreateResourceInput) (models.Resource, error) {
+func (r *ResourcePostgres) Create(input models.CreateResourceInput) (models.Resource, error) {
 	const rawQuery = `
 		INSERT INTO %s (name, type, status) 
 		VALUES ($1, $2, $3) 
@@ -35,7 +36,7 @@ func (r *ResourcesPostgres) Create(input models.CreateResourceInput) (models.Res
 	return createdResource, nil
 }
 
-func (r *ResourcesPostgres) GetAll() ([]models.Resource, error) {
+func (r *ResourcePostgres) GetAll() ([]models.Resource, error) {
 	const rawQuery = `
 		SELECT id, name, type, status 
 		FROM %s
@@ -52,7 +53,7 @@ func (r *ResourcesPostgres) GetAll() ([]models.Resource, error) {
 	return rescources, nil
 }
 
-func (r *ResourcesPostgres) GetById(resourceID int) (models.Resource, error) {
+func (r *ResourcePostgres) GetById(resourceID int) (models.Resource, error) {
 	const rawQuery = `
 		SELECT id, name, type, status 
 		FROM %s WHERE id = $1	
@@ -72,43 +73,52 @@ func (r *ResourcesPostgres) GetById(resourceID int) (models.Resource, error) {
 	return resource, nil
 }
 
-func (r *ResourcesPostgres) Update(resourceID int, input models.Resource) (models.Resource, error) {
-	const rawQuery = `
-		SELECT id, name, type, status
-		FROM %s
-		WHERE id = $1
-	`
-	query := fmt.Sprintf(rawQuery, db.ResourcesTable)
+func (r *ResourcePostgres) Update(resourceID int, input models.UpdateResourceInput) error {
+	setValues := make([]string, 0)
+	args := make([]interface{}, 0)
+	argId := 1
 
-	var resource models.Resource
-	err := r.db.Get(&resource, query, resourceID)
+	if input.Name != nil {
+		setValues = append(setValues, fmt.Sprintf("name=$%d", argId))
+		args = append(args, *input.Name)
+		argId++
+	}
+
+	if input.Type != nil {
+		setValues = append(setValues, fmt.Sprintf("type=$%d", argId))
+		args = append(args, *input.Type)
+		argId++
+	}
+
+	if input.Status != nil {
+		setValues = append(setValues, fmt.Sprintf("status=$%d", argId))
+		args = append(args, *input.Status)
+		argId++
+	}
+
+	setArgs := strings.Join(setValues, ", ")
+
+	const rawQuery = `
+		UPDATE %s
+		SET %s 
+		WHERE id = %d
+	`
+
+	query := fmt.Sprintf(rawQuery, db.ResourcesTable, setArgs, argId)
+
+	args = append(args, resourceID)
+
+	_, err := r.db.Exec(query, args...)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return models.Resource{}, fmt.Errorf("resource with ID: %d does not exist: %w", resourceID, err)
+			return fmt.Errorf("resource with ID: %d does not exist: %w", resourceID, err)
 		}
-		return models.Resource{}, err
 	}
 
-	//...
-	const updateQuery = `
-		UPDATE %s
-		SET name = $1, type = $2, status = $3
-		WHERE id = $4
-		RETURNING id, name, type, status
-	`
-
-	query = fmt.Sprintf(updateQuery, db.ResourcesTable)
-
-	var updatedResource models.Resource
-	err = r.db.QueryRowx(query, input.Name, input.Type, input.Status).StructScan(&updatedResource)
-	if err != nil {
-		return models.Resource{}, err
-	}
-
-	return updatedResource, nil
+	return nil
 }
 
-func (r *ResourcesPostgres) Delete(resourceID int) error {
+func (r *ResourcePostgres) Delete(resourceID int) error {
 	const rawQuery = `
 		DELETE FROM %s
 		WHERE id = $1
