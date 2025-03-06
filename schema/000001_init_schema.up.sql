@@ -15,8 +15,8 @@ CREATE TABLE resources (
 
 CREATE TABLE bookings (
     id          SERIAL    PRIMARY KEY,
-    resource_id INT       NOT NULL,
     user_id     INT       NOT NULL,
+    resource_id INT       NOT NULL,
     start_time  TIMESTAMP NOT NULL,
     end_time    TIMESTAMP NOT NULL,
 
