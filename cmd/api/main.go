@@ -38,24 +38,18 @@ func main() {
 		logger.Error("failed to connect to the database", "error", err.Error())
 	}
 
-	logger.Info("successfully connected to the database")
+	//logger.Info("successfully connected to the database")
 
-	fmt.Println(database)
-
-	respository := repositories.ResourcesPostgres{database}
-
-	fmt.Println(respository)
+	repository := repositories.NewRepository(database)
 
 	// serivce should recive logger, cache and others...
 
-	// repository := NewRepository(database)
 	//
-	// TODO: new repo with db
 	// TODO: new services with repo
 	// TODO: new handlers with services
 
 	for {
-
+		// that`s a cool loop (forever)
 	}
 
 	//http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
