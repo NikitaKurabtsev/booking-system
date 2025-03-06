@@ -2,15 +2,13 @@ package models
 
 import (
 	"errors"
-	"time"
 )
 
 type Resource struct {
-	ID        int       `db:"id" json:"id"`
-	Name      string    `db:"name" json:"name"`
-	Type      string    `db:"type" json:"type"`
-	Status    string    `db:"status" json:"status"`
-	CreatedAt time.Time `db:"created_at" json:"created_at"`
+	ID     int    `db:"id" json:"id"`
+	Name   string `db:"name" json:"name"`
+	Type   string `db:"type" json:"type"`
+	Status string `json:"status" binding:"required,oneof=available booked"`
 }
 
 type CreateResourceInput struct {
