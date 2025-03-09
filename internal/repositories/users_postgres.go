@@ -46,7 +46,7 @@ func (r *UserPostgres) GetUser(username, password string) (models.User, error) {
 	err := r.db.Get(&user, query, username, password)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return models.User{}, fmt.Errorf("resource with Username :%s does not exsit :%w", username, err)
+			return models.User{}, fmt.Errorf("user with Username :%s does not exsit :%w", username, err)
 		}
 		return models.User{}, err
 	}
