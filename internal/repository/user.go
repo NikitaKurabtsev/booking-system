@@ -1,23 +1,24 @@
-package repositories
+package repository
 
 import (
-	"database/sql"
+	"context"
 	"errors"
 	"fmt"
 	"github.com/NikitaKurabtsev/booking-system/internal/models"
 	"github.com/NikitaKurabtsev/booking-system/pkg/db"
-	"github.com/jmoiron/sqlx"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type UserPostgres struct {
-	db *sqlx.DB
+type UserRepository struct {
+	db *pgxpool.Pool
 }
 
-func NewUserPostgres(db *sqlx.DB) *UserPostgres {
-	return &UserPostgres{db: db}
+func NewUserRepository(db *pgxpool.Pool) *UserRepository {
+	return &UserRepository{db: db}
 }
 
-func (r *UserPostgres) Create(input models.User) (int, error) {
+func (r *UserRepository) Create(ctx context.Context, input models.User) (int, error) {
 	rawQuery := `
 		INSERT INTO %s (username, email, password_hash)
 		VALUES ($1, $2, $3)
@@ -26,7 +27,7 @@ func (r *UserPostgres) Create(input models.User) (int, error) {
 	query := fmt.Sprintf(rawQuery, db.UsersTable)
 
 	var userID int
-	err := r.db.QueryRowx(query, input.Username, input.Email, input.PasswordHash).Scan(&userID)
+	err := r.db.QueryRow(ctx, query, input.Username, input.Email, input.PasswordHash).Scan(&userID)
 	if err != nil {
 		return 0, err
 	}
@@ -34,7 +35,7 @@ func (r *UserPostgres) Create(input models.User) (int, error) {
 	return userID, nil
 }
 
-func (r *UserPostgres) GetUser(username, password string) (models.User, error) {
+func (r *UserRepository) GetUser(ctx context.Context, username, password string) (models.User, error) {
 	rawQuery := `
 		SELECT id
 		FROM %s
@@ -43,9 +44,9 @@ func (r *UserPostgres) GetUser(username, password string) (models.User, error) {
 	query := fmt.Sprintf(rawQuery, db.UsersTable)
 
 	var user models.User
-	err := r.db.Get(&user, query, username, password)
+	err := r.db.QueryRow(ctx, query, username, password).Scan(&user.ID, &user.Username, &user.Email, &user.PasswordHash)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return models.User{}, fmt.Errorf("user with Username :%s does not exsit :%w", username, err)
 		}
 		return models.User{}, err

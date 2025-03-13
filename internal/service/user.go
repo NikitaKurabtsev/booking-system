@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/NikitaKurabtsev/booking-system/internal/models"
-	"github.com/NikitaKurabtsev/booking-system/internal/repositories"
+	"github.com/NikitaKurabtsev/booking-system/internal/repository"
 	"github.com/golang-jwt/jwt/v4"
 	"time"
 )
@@ -22,7 +22,11 @@ type tokenClaims struct {
 }
 
 type UserService struct {
-	repository repositories.UserRepository
+	repository repository.User
+}
+
+func NewUserService(repository repository.User) *UserService {
+	return &UserService{repository: repository}
 }
 
 func (s *UserService) GenerateToken(username, password string) (string, error) {

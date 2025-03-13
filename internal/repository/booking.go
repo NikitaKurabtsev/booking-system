@@ -1,22 +1,23 @@
-package repositories
+package repository
 
 import (
 	"fmt"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/NikitaKurabtsev/booking-system/internal/models"
 	"github.com/NikitaKurabtsev/booking-system/pkg/db"
 	"github.com/jmoiron/sqlx"
 )
 
-type BookingPostgres struct {
-	db *sqlx.DB
+type BookingRepository struct {
+	db *pgxpool.Pool
 }
 
-func NewBookingPostgres(db *sqlx.DB) *BookingPostgres {
-	return &BookingPostgres{db: db}
+func NewBookingRepository(db *pgxpool.Pool) *BookingRepository {
+	return &BookingRepository{db: db}
 }
 
-func (r *BookingPostgres) Create(input models.Booking) (models.Booking, error) {
+func (r *BookingRepository) Create(input models.Booking) (models.Booking, error) {
 	rawQuery := `
 		INSERT INTO %s (resource_id, user_id, start_time, end_time)
 		VALUES ($1, $2, $3, $4)
@@ -34,7 +35,7 @@ func (r *BookingPostgres) Create(input models.Booking) (models.Booking, error) {
 	return booking, nil
 }
 
-func (r *BookingPostgres) GetAll(userID int) ([]models.Booking, error) {
+func (r *BookingRepository) GetAll(userID int) ([]models.Booking, error) {
 	rawQuery := `
 		SELECT b.id, r.name, b.start_time, b.end_time
 		FROM %s b
@@ -53,7 +54,7 @@ func (r *BookingPostgres) GetAll(userID int) ([]models.Booking, error) {
 	return nil, nil
 }
 
-func (r *BookingPostgres) Delete(bookingID int) error {
+func (r *BookingRepository) Delete(bookingID int) error {
 	rawQuery := `
 		DELETE FROM %s
 		WHERE id = $1
