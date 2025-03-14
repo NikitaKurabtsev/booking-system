@@ -1,13 +1,17 @@
-package services
+package service
 
 import (
+	"context"
 	"crypto/sha1"
 	"errors"
 	"fmt"
+	"log/slog"
+	"net/mail"
+	"time"
+
 	"github.com/NikitaKurabtsev/booking-system/internal/models"
 	"github.com/NikitaKurabtsev/booking-system/internal/repository"
 	"github.com/golang-jwt/jwt/v4"
-	"time"
 )
 
 const (
@@ -23,14 +27,17 @@ type tokenClaims struct {
 
 type UserService struct {
 	repository repository.User
+	logger     *slog.Logger
 }
 
 func NewUserService(repository repository.User) *UserService {
 	return &UserService{repository: repository}
 }
 
-func (s *UserService) GenerateToken(username, password string) (string, error) {
-	user, err := s.repository.GetUser(username, hashPassword(password))
+func (s *UserService) GenerateToken(ctx context.Context, username, password string) (string, error) {
+	hashedPassword := hashPassword(password)
+
+	user, err := s.repository.GetUser(ctx, username, hashedPassword)
 	if err != nil {
 		return "", err
 	}
@@ -66,10 +73,25 @@ func (s *UserService) ParseToken(accessToken string) (int, error) {
 	return claims.UserID, nil
 }
 
-func (s *UserService) CreateUser(user models.User) (int, error) {
-	user.PasswordHash = hashPassword(user.PasswordHash)
+func (s *UserService) CreateUser(ctx context.Context, user models.User) (int, error) {
+	err := isValidEmail(user.Email)
+	if err != nil {
+		return 0, err
+	}
 
-	return s.repository.Create(user)
+	hashedPassword := hashPassword(user.Password)
+	user.Password = hashedPassword
+
+	return s.repository.Create(ctx, user)
+}
+
+func isValidEmail(email string) error {
+	_, err := mail.ParseAddress(email)
+	if err != nil {
+		return errors.New("invalid email")
+	}
+
+	return nil
 }
 
 func hashPassword(password string) string {
