@@ -5,7 +5,6 @@ import (
 	"crypto/sha1"
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/mail"
 	"time"
 
@@ -27,7 +26,6 @@ type tokenClaims struct {
 
 type UserService struct {
 	repository repository.User
-	logger     *slog.Logger
 }
 
 func NewUserService(repository repository.User) *UserService {
