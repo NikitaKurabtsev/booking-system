@@ -1,9 +1,10 @@
 package db
 
 import (
+	"context"
 	"fmt"
-
-	"github.com/jmoiron/sqlx"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"time"
 )
 
 const (
@@ -21,21 +22,43 @@ type Config struct {
 	SSLMode  string
 }
 
-func NewPostgresDB(cfg Config) (*sqlx.DB, error) {
+//func NewPostgresDB(cfg Config) (*sqlx.DB, error) {
+//	dsn := fmt.Sprintf(
+//		"host=%s port=%s user=%s dbname=%s password=%s sslmode=%s",
+//		cfg.Host, cfg.Port, cfg.Username, cfg.DBName, cfg.Password, cfg.SSLMode)
+//
+//	db, err := sqlx.Open("postgres", dsn)
+//	if err != nil {
+//		return nil, err
+//	}
+//
+//	err = db.Ping()
+//	if err != nil {
+//		db.Close()
+//		return nil, err
+//	}
+//
+//	return db, nil
+//}
+
+func InitPgxPool(cfg Config) (*pgxpool.Pool, error) {
 	dsn := fmt.Sprintf(
-		"host=%s port=%s user=%s dbname=%s password=%s sslmode=%s",
-		cfg.Host, cfg.Port, cfg.Username, cfg.DBName, cfg.Password, cfg.SSLMode)
+		"postgres://%s:%s@%s:%s/%s?sslmode=%s",
+		cfg.Username, cfg.Password, cfg.Host, cfg.Port, cfg.DBName, cfg.SSLMode,
+	)
 
-	db, err := sqlx.Open("postgres", dsn)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	pool, err := pgxpool.New(ctx, dsn)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unable to create connection pool: %w", err)
 	}
 
-	err = db.Ping()
-	if err != nil {
-		db.Close()
-		return nil, err
+	if err = pool.Ping(ctx); err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("unable to ping database: %w", err)
 	}
 
-	return db, nil
+	return pool, nil
 }
