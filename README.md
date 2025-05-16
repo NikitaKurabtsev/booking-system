@@ -1,20 +1,20 @@
 # Resource Booking Management System
 
-## 📌 Project Overview
+## Project Overview
 
 **Idea**: Develop a resource booking management system to help users discover, reserve, and efficiently utilize limited resources. Examples include booking conference rooms in offices, event equipment, sports facilities, or coworking spaces.  
 **Hypothesis**: Automating the resource booking process will reduce conflicts from overlapping reservations, lower administrative costs, and improve user satisfaction.
 
 ---
 
-## 🎯 Target Audience
+## Target Audience
 - Offices and companies with large teams.
 - Owners of sports facilities or other resources requiring reservations.
 - Coworking space administrators.
 
 ---
 
-## 🛠️ Use Case Scenario
+## Use Case Scenario
 1. **User Authentication**: A user logs into the system.
 2. **Resource Selection**: They select a resource type (room, equipment, facility).
 3. **Search & Filter**: Browse available resources via a calendar or filters.
@@ -23,7 +23,7 @@
 
 ---
 
-## 🚀 MVP (Minimal Viable Product)
+## MVP (Minimal Viable Product)
 
 ### Core Features
 - **User Registration & Authentication**: Secure sign-up/login functionality.
@@ -39,7 +39,7 @@
 
 ---
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 | **Category**       | **Technologies**                                                                 |
 |---------------------|---------------------------------------------------------------------------------|
@@ -53,7 +53,7 @@
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 1. **Handlers (API Layer)**
     - Process incoming requests.
     - Validate input data.
@@ -69,7 +69,7 @@
 
 ---
 
-## 🔗 API Endpoints
+## API Endpoints
 
 | **Method** | **Endpoint**               | **Description**                              |
 |------------|----------------------------|----------------------------------------------|
@@ -82,7 +82,7 @@
 
 ---
 
-## 🗃️ Database Models
+## Database Models
 
 ### `Resource`
 ```json
