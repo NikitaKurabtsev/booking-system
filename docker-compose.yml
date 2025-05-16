@@ -10,12 +10,10 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      logstash:
-        condition: service_healthy
     networks:
       - app-network
-    ports:
-      - "8080:8080"
+    # ports:
+    # - "8080:8080"
 
   postgres:
     container_name: postgres
@@ -49,68 +47,75 @@ services:
     networks:
       - app-network
 
-  elasticsearch:
-    container_name: elastic_search
-    image: elasticsearch:8.13.4
-    environment:
-      - discovery.type=single-node
-      - ES_JAVA_OPTS=-Xms512m -Xmx512m
-      - xpack.security.enabled=false
-    volumes:
-      - elastic-data:/usr/share/elasticsearch/data
-    networks:
-      - app-network
-
-  kibana:
-    container_name: kibana
-    image: kibana:8.13.4
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
     ports:
-      - "5601:5601"
+      - "9090:9090"
+    networks:
+      - app-network
+    volumes:
+      - ./internal/config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheusdata:/prometheus
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
     environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin12345
+    networks:
+      - app-network
     depends_on:
-      - elasticsearch
+      - prometheus
+      - loki
+    volumes:
+      - ./internal/config/grafana/datasources:/etc/grafana/provisioning/datasources
+      - grafanadata:/var/lib/grafana
+
+  loki:
+    image: grafana/loki:2.9.2
+    container_name: loki
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
     networks:
       - app-network
 
-  logstash:
-    container_name: logstash
-    image: logstash:8.13.4
-    volumes:
-      - ./internal/config/logstash/pipeline:/usr/share/logstash/pipeline
-    healthcheck:
-      test: [ "CMD-SHELL", "curl -s http://localhost:9600/_node/stats/pipelines || exit 1" ]
-      interval: 30s  
-      timeout: 10s
-      retries: 3
-      start_period: 10s
-
+  promtail:
+    image: grafana/promtail:2.9.2
+    container_name: promtail
+    ports:
+      - "9080:9080"
+    command: -config.file=/etc/promtail/config.yml
     networks:
       - app-network
-
-  filebeat:
-    container_name: filebeat
-    image: docker.elastic.co/beats/filebeat:8.13.4
-    user: root
     volumes:
-      - ./internal/config/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml
-      - filebeat-logs:/usr/share/filebeat/logs
+      - /var/log:/var/log
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/run/docker.sock:/var/run/docker.sock
+      - ./internal/config/promtail/config.yml:/etc/promtail/config.yml
+
+  nginx:
+    image: nginx:1.27.5
+    container_name: nginx
+    ports:
+      - "80:80"
     networks:
-      - app-network
-    command: >
-      bash -c "
-      chown -R root:root /usr/share/filebeat &&
-      chmod -R go-w /usr/share/filebeat &&
-      filebeat -e
-      "
+      - app-network 
+    volumes:
+      - ./nginx/default.conf:/etc/nginx/conf.d/default.conf
+    depends_on:
+      - api
+    
 
 volumes:
   postgres-data:
   redis-data:
-  elastic-data:
-  filebeat-logs:
+  prometheusdata:
+  grafanadata:
 
 networks:
   app-network:
