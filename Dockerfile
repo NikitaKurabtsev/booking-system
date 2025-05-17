@@ -1,37 +1,30 @@
 # Build stage
-FROM golang:1.22.4-alpine AS builder
+FROM golang:1.23-alpine AS builder
+
 WORKDIR /app
 
-# Копируем зависимости и скачиваем их
 COPY go.mod go.sum ./
-RUN go mod download
 
-# Копируем весь проект
+ENV GOPROXY=https://goproxy.cn,direct
+
+RUN go mod download
+RUN go mod download && go mod verify
+
 COPY . .
 
-# Собираем только API
-RUN CGO_ENABLED=0 GOOS=linux go build -o /app/bin/api ./cmd/api
-
-# Устанавливаем migrate на этапе сборки
-RUN go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+RUN CGO_ENABLED=0 GOOS=linux go build -o api ./cmd/api
 
 # Final stage
-FROM alpine:latest
-WORKDIR /app
+FROM alpine:3.19
 
-# Копируем бинарник и зависимости
-COPY --from=builder /app/bin/api .
-COPY --from=builder /app/schema ./schema
-COPY --from=builder /app/internal/config ./config
-
-# Устанавливаем зависимости для здоровья
 RUN apk add --no-cache postgresql-client curl
 
-# Копируем migrate
-COPY --from=builder /go/bin/migrate /usr/local/bin/migrate
+WORKDIR /app
 
-# Порт для API
+COPY --from=builder /app/api .
+COPY --from=builder /app/internal/config ./config
+COPY --from=builder /app/schema ./schema
+
 EXPOSE 8080
 
-# Команда запуска
 CMD ["./api"]
