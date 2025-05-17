@@ -7,22 +7,41 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-type Cache struct {
+const TTL = 5 * time.Minute
+
+type Cache interface {
+	Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error
+	Get(ctx context.Context, key string) (string, error)
+	Close() error
+}
+
+type redisCache struct {
 	client *redis.Client
 }
 
-func NewCache(addr string) *Cache {
+func NewCache(addr string) (Cache, error) {
 	client := redis.NewClient(&redis.Options{
-		Addr: addr,
+		Addr:     addr,
+		Password: "",
+		DB:       0,
 	})
 
-	return &Cache{client: client}
+	ctx := context.Background()
+	if err := client.Ping(ctx).Err(); err != nil {
+		return nil, err
+	}
+
+	return &redisCache{client: client}, nil
 }
 
-func (c *Cache) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
-	return c.client.Set(ctx, key, value, ttl).Err()
+func (rc *redisCache) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
+	return rc.client.Set(ctx, key, value, ttl).Err()
 }
 
-func (c *Cache) Get(ctx context.Context, key string) (string, error) {
-	return c.client.Get(ctx, key).Result()
+func (rc *redisCache) Get(ctx context.Context, key string) (string, error) {
+	return rc.client.Get(ctx, key).Result()
+}
+
+func (rc *redisCache) Close() error {
+	return rc.client.Close()
 }
