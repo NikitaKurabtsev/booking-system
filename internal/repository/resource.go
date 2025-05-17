@@ -2,18 +2,81 @@ package repository
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log"
+
 	"github.com/NikitaKurabtsev/booking-system/internal/models"
+	"github.com/NikitaKurabtsev/booking-system/pkg/cache"
 	"github.com/NikitaKurabtsev/booking-system/pkg/db"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type ResourceRepository struct {
-	db *pgxpool.Pool
+	db    DBPool
+	cache cache.Cache
 }
 
-func NewResourceRepository(db *pgxpool.Pool) *ResourceRepository {
-	return &ResourceRepository{db: db}
+func NewResourceRepository(db DBPool, cache cache.Cache) *ResourceRepository {
+	return &ResourceRepository{
+		db:    db,
+		cache: cache,
+	}
+}
+
+func (r *ResourceRepository) GetAll(ctx context.Context) ([]models.Resource, error) {
+	cacheKey := "resources:all"
+
+	if cached, err := r.cache.Get(ctx, cacheKey); err == nil {
+		var resources []models.Resource
+		err := json.Unmarshal([]byte(cached), &resources)
+		if err == nil {
+			return resources, nil
+		}
+
+	}
+
+	const rawQuery = `
+		SELECT id, name, type, status 
+		FROM %s
+	`
+
+	query := fmt.Sprintf(rawQuery, db.ResourcesTable)
+
+	rows, err := r.db.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var resources []models.Resource
+
+	for rows.Next() {
+		var res models.Resource
+		err = rows.Scan(&res.ID, &res.Name, &res.Type, &res.Status)
+		if err != nil {
+			return nil, err
+		}
+		resources = append(resources, res)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows iteration error: %w", err)
+	}
+
+	go func() {
+		data, err := json.Marshal(resources)
+		if err != nil {
+			log.Printf("Cache marshal error: %v", err)
+		}
+
+		err = r.cache.Set(ctx, cacheKey, data, cache.TTL)
+		if err != nil {
+			log.Printf("cache SET error: %v", err)
+		}
+
+	}()
+
+	return resources, nil
 }
 
 //func (r *ResourceRepository) Create(input models.CreateResourceInput) (models.Resource, error) {
@@ -32,41 +95,6 @@ func NewResourceRepository(db *pgxpool.Pool) *ResourceRepository {
 //
 //	return createdResource, nil
 //}
-
-func (r *ResourceRepository) GetAll(ctx context.Context) ([]models.Resource, error) {
-	const rawQuery = `
-		SELECT id, name, type, status 
-		FROM %s
-	`
-
-	query := fmt.Sprintf(rawQuery, db.ResourcesTable)
-
-	rows, err := r.db.Query(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var resources []models.Resource
-
-	for rows.Next() {
-		var resource models.Resource
-		err = rows.Scan(&resource.ID, &resource.Name, &resource.Status, &resource.Type)
-		if err != nil {
-			return nil, err
-		}
-		resources = append(resources, resource)
-	}
-
-	return resources, nil
-
-	//err := r.db.Select(&resources, query)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//
-	//return resources, nil
-}
 
 //func (r *ResourceRepository) GetById(resourceID int) (models.Resource, error) {
 //	const rawQuery = `
