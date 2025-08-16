@@ -8,15 +8,13 @@ CREATE TABLE users (
 CREATE TABLE resources (
     id     SERIAL       PRIMARY KEY,
     name   VARCHAR(255) NOT NULL UNIQUE,
-    type   VARCHAR(50)  NOT NULL UNIQUE,
-    status VARCHAR(10)  NOT NULL
-        CHECK ( status IN ('available', 'booked'))
+    type   VARCHAR(50)  NOT NULL UNIQUE
 );
 
 CREATE TABLE bookings (
     id          SERIAL    PRIMARY KEY,
-    user_id     INT       NOT NULL,
     resource_id INT       NOT NULL,
+    user_id     INT       NOT NULL,
     start_time  TIMESTAMP NOT NULL,
     end_time    TIMESTAMP NOT NULL,
 
