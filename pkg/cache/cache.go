@@ -12,6 +12,7 @@ const TTL = 5 * time.Minute
 type Cache interface {
 	Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error
 	Get(ctx context.Context, key string) (string, error)
+	Delete(ctx context.Context, key string) error
 	Close() error
 }
 
@@ -40,6 +41,10 @@ func (rc *redisCache) Set(ctx context.Context, key string, value interface{}, tt
 
 func (rc *redisCache) Get(ctx context.Context, key string) (string, error) {
 	return rc.client.Get(ctx, key).Result()
+}
+
+func (rc *redisCache) Delete(ctx context.Context, key string) error {
+	return rc.client.Del(ctx, key).Err()
 }
 
 func (rc *redisCache) Close() error {
