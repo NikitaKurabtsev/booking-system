@@ -1,32 +1,47 @@
 package main
 
 import (
-	"fmt"
-	"log/slog"
+	"context"
+	"github.com/NikitaKurabtsev/booking-system"
+	logger2 "github.com/NikitaKurabtsev/booking-system/logger"
+	"log"
 	"os"
+	"os/signal"
+	"syscall"
 
+	"github.com/NikitaKurabtsev/booking-system/internal/handlers"
 	"github.com/NikitaKurabtsev/booking-system/internal/repositories"
+	"github.com/NikitaKurabtsev/booking-system/internal/services"
 
+	_ "github.com/NikitaKurabtsev/booking-system/cmd/api/docs"
+	"github.com/NikitaKurabtsev/booking-system/pkg/cache"
 	"github.com/NikitaKurabtsev/booking-system/pkg/db"
 	_ "github.com/lib/pq"
 	"github.com/spf13/viper"
 )
 
+// @title Booking-System API
+// @version 1.0
+// @description API Server for Booking-System Application
+
+// @host localhost:8000
+// @BasePath /
+
+// @securityDefinitions.apikey ApiKeyAuth
+// @in header
+// @name Authorization
 func main() {
-	loggerHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelInfo,
-	})
-	logger := slog.New(loggerHandler)
+	// TODO:
+	// ensure with create booking handler
+	// configure ROUTES!
+	// Notification with email (MQ)
+	logger := logger2.NewSLogger()
 
 	if err := loadConfig(); err != nil {
 		logger.Error("failed to load configs", "error", err.Error())
 	}
 
-	//if err := godotenv.Load(); err != nil {
-	//	logger.Error("failed to load environment variables", "error", err.Error())
-	//}
-
-	database, err := db.NewPostgresDB(db.Config{
+	postgresDB, err := db.NewPostgresDB(db.Config{
 		Host:     viper.GetString("db.host"),
 		Port:     viper.GetString("db.port"),
 		Username: viper.GetString("db.username"),
@@ -37,41 +52,35 @@ func main() {
 	if err != nil {
 		logger.Error("failed to connect to the database", "error", err.Error())
 	}
+	logger.Info("successfully connected to the database")
 
-	//logger.Info("successfully connected to the database")
+	redisCache, err := cache.NewCache("redis:6379")
+	if err != nil {
+		log.Fatalf("failed to initialize cache: %v", err)
+		return
+	}
+	logger.Info("successfully connected to the redis")
 
-	repository := repositories.NewRepository(database)
+	repository := repositories.NewRepository(postgresDB, redisCache)
+	service := services.NewService(repository)
+	handler := handlers.NewHandler(service, logger)
 
-	// serivce should recive logger, cache and others...
+	server := new(booking.Server)
+	go func() {
+		if err := server.Run("8080", handler.InitRoutes()); err != nil {
+			log.Fatalf("error occurred while running http server: %s", err)
+		}
+	}()
 
-	//
-	// TODO: new services with repo
-	// TODO: new handlers with services
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, syscall.SIGTERM, syscall.SIGINT)
+	<-stop
 
-	for {
-		// that`s a cool loop (forever)
+	if err := server.ShutDown(context.Background()); err != nil {
+		logger.Error("error occurred on server shutting down", "error", err)
 	}
 
-	//http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-	//	if r.Method == "POST" {
-	//		logger.Error("Not Allowed for this Handler",
-	//			slog.String("method", r.Method),
-	//			slog.Time("time", time.Now()))
-	//
-	//		w.WriteHeader(http.StatusMethodNotAllowed)
-	//		w.Write([]byte("Not Allowed"))
-	//		return
-	//	}
-	//	logger.Info("INFO: Request received from %s",
-	//		"address OK", r.RemoteAddr)
-	//
-	//	w.Write([]byte("Hello World"))
-	//})
-	//
-	//logger.Info("INFO: Server starting on :8080")
-	//if err := http.ListenAndServe(":8080", nil); err != nil {
-	//	logger.Error("ERROR: Failed to start server: %v", err)
-	//}
+	postgresDB.Close()
 }
 
 func loadConfig() error {
