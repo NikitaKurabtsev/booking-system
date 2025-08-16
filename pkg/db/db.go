@@ -8,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// TODO: DELETE USERSTABLE
 const (
 	UsersTable     = "users"
 	BookingsTable  = "bookings"
