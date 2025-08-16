@@ -1,17 +1,17 @@
-package service
+package services
 
 import (
 	"context"
 
 	"github.com/NikitaKurabtsev/booking-system/internal/domain"
-	"github.com/NikitaKurabtsev/booking-system/internal/repository"
+	"github.com/NikitaKurabtsev/booking-system/internal/repositories"
 )
 
 type ResourceService struct {
-	repository repository.Resource
+	repository repositories.Resource
 }
 
-func NewResourceService(repository repository.Resource) *ResourceService {
+func NewResourceService(repository repositories.Resource) *ResourceService {
 	return &ResourceService{
 		repository: repository,
 	}

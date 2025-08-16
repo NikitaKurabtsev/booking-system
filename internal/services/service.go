@@ -1,10 +1,10 @@
-package service
+package services
 
 import (
 	"context"
 
 	"github.com/NikitaKurabtsev/booking-system/internal/domain"
-	"github.com/NikitaKurabtsev/booking-system/internal/repository"
+	"github.com/NikitaKurabtsev/booking-system/internal/repositories"
 )
 
 type User interface {
@@ -30,7 +30,7 @@ type Service struct {
 	Booking
 }
 
-func NewService(repositories *repository.Repository) *Service {
+func NewService(repositories *repositories.Repository) *Service {
 	return &Service{
 		User:     NewUserService(repositories.User),
 		Resource: NewResourceService(repositories.Resource),

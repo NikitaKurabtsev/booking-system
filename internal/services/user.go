@@ -1,4 +1,4 @@
-package service
+package services
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/NikitaKurabtsev/booking-system/internal/domain"
-	"github.com/NikitaKurabtsev/booking-system/internal/repository"
+	"github.com/NikitaKurabtsev/booking-system/internal/repositories"
 	"github.com/golang-jwt/jwt/v4"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -23,10 +23,10 @@ type tokenClaims struct {
 }
 
 type UserService struct {
-	repository repository.User
+	repository repositories.User
 }
 
-func NewUserService(repository repository.User) *UserService {
+func NewUserService(repository repositories.User) *UserService {
 	return &UserService{repository: repository}
 }
 
@@ -96,7 +96,12 @@ func (s *UserService) CreateUser(ctx context.Context, user domain.User) (int, er
 
 	user.Password = hashedPassword
 
-	return s.repository.Create(ctx, user)
+	userID, err := s.repository.Create(ctx, user)
+	if err != nil {
+		return 0, err
+	}
+
+	return userID, nil
 }
 
 func hashPassword(password string) (string, error) {
