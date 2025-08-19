@@ -137,6 +137,7 @@ func (r *BookingRepository) Create(ctx context.Context, inputBooking domain.Book
 	return bookingID, nil
 }
 
+// check where to get user id from params or from the headers
 func (r *BookingRepository) GetAll(ctx context.Context, userID int) ([]domain.Booking, error) {
 	// TODO: where to get cache?????
 	cacheKey := fmt.Sprintf("bookings:users:%d", userID) // TODO: check cache key
@@ -149,15 +150,13 @@ func (r *BookingRepository) GetAll(ctx context.Context, userID int) ([]domain.Bo
 		}
 		return bookings, nil
 	} else {
-		// TODO: change logger
 		log.Printf("cache GET error: %v", err)
 	}
 
-	// TODO: check query r name r id
 	query := `
-		SELECT b.id, b.resource_id, b.start_time, b.end_time
-		FROM bookings b
-		WHERE b.user_id = $1
+		SELECT id, resource_id, start_time, end_time
+		FROM bookings
+		WHERE user_id = $1
 `
 
 	rows, err := r.db.Query(ctx, query, userID)
