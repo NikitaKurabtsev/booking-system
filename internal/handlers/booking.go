@@ -37,14 +37,13 @@ func (h *Handler) getBookings(c *gin.Context) {
 // @Failure default {object} errorResponse
 // @Router /api/bookings [post]
 func (h *Handler) createBooking(c *gin.Context) {
-	var booking dto.CreateBookingDTO
-
 	userID, err := getUserID(c)
 	if err != nil {
 		h.errorResponse(c, http.StatusBadRequest, err.Error())
 		return
 	}
 
+	var booking dto.CreateBookingDTO
 	if err := c.ShouldBindJSON(&booking); err != nil {
 		h.errorResponse(c, http.StatusBadRequest, err.Error())
 		return
